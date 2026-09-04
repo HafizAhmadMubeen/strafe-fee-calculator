@@ -1,0 +1,13 @@
+# Python packages for developing / building the STRAFE Fee Calculator.
+# End users of the .exe need NONE of this.
+#
+#   python -m venv .venv
+#   .venv\Scripts\python -m pip install -r requirements.txt
+#
+# No "playwright install" is needed - the tool attaches to the user's own Edge.
+
+playwright>=1.40
+openpyxl>=3.1
+
+# only needed to build the standalone .exe (build_exe.bat installs it too)
+pyinstaller>=6.0

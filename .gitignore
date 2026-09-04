@@ -1,0 +1,27 @@
+# --- Python ---------------------------------------------------------------
+.venv/
+__pycache__/
+*.pyc
+
+# --- PyInstaller build output (rebuild locally with build_exe.bat) --------
+build/
+dist/
+
+# --- Generated packaging output (rebuild with make_*.bat) -----------------
+drive package/
+STRAFE Fee Calculator/
+
+# --- Runtime / local data - never commit -----------------------------------
+.edge-automation/
+*.xlsx
+*.xls
+* (state).json
+last-error.log
+_gui_preview.png
+
+# --- Local tool config -------------------------------------------------
+.claude/
+
+# --- OS ------------------------------------------------------------------
+Thumbs.db
+.DS_Store

@@ -1,0 +1,120 @@
+Subject: STRAFE Fee Calculator — Automation Tool Built, Tested, and Ready to Roll Out
+
+Hi [Name],
+
+I wanted to give a full write-up of the STRAFE test-automation tool I've been
+building — the problem it solves, how it works, what it took to get there, and
+where it stands now.
+
+THE PROBLEM
+-----------
+Every rate update, we manually re-test ~260 endorsement rows against the STRAFE
+Testing Calculator (strafe.stewart.com/TestingCalculator). For each row that
+means typing in the Liability Type, Coverage Type Code, Fee Item Code, and up
+to four test amounts, clicking Calculate, reading back the Fee Amount, and
+copying it into the test sheet next to the Expected Value — by hand, one field
+at a time, up to ~1,000 individual entries per rate update. It's slow and,
+because it's repetitive manual data entry, error-prone.
+
+We don't have API access to STRAFE, so there was no way to skip the UI —
+whatever we built had to drive the actual web page the way a person does.
+
+THE PROPOSED SOLUTION
+----------------------
+Automate the fill-in / read-back loop with a script that:
+
+  1. Reads each row's inputs straight from the existing test workbook
+     (the STRAFE sheet everyone already uses).
+  2. Types them into the Testing Calculator in the browser.
+  3. Clicks Calculate and reads the Fee Amount back.
+  4. Writes that value into the workbook's Actual Value column, next to the
+     pre-recorded Expected Value, ready for review.
+
+Rather than a script only I could run, I built it as a small point-and-click
+Windows application — Connect Edge, choose the Excel file, click Run — so
+anyone on the team can use it, technical or not, with no setup.
+
+HOW IT WAS BUILT
+-----------------
+- Automation engine: Python + Playwright, attaching to a Microsoft Edge window
+  the user already has open (over Edge's DevTools debugging port). It never
+  launches its own browser and never touches the user's normal Edge profile —
+  it uses a separate, dedicated Edge profile just for this.
+- Excel read/write: openpyxl, so results are written as real numbers (not
+  text), and the rest of the workbook's formatting/formulas is left untouched.
+- Front end: a native Windows window (Tkinter) with three steps — Connect
+  Edge, Choose Excel file, Run it — each one unlocking the next, plus a live
+  progress bar and log.
+- Packaging: PyInstaller, producing one standalone .exe. No Python, no
+  installs, nothing for a user to set up — they double-click and go.
+
+Built-in safeguards, since this writes into a real production test file:
+  - A safety backup of the workbook is made before every run, and only kept
+    if the run fails (a clean run leaves no clutter).
+  - After roughly the first 10% of rows, it automatically pauses, saves, and
+    opens the workbook in Excel so the user can sanity-check the results
+    before letting it run through the rest.
+  - It can be stopped at any point and safely resumed later — it remembers
+    exactly which rows are done, and if a row's Excel inputs get edited
+    afterward, it automatically detects that and re-does just that row.
+  - At the end of every run it asks "Results look good?" before cleaning up
+    its own tracking file, so nothing is thrown away by accident.
+  - Rows that can't be tested (missing Liability Type, invalid dropdown value,
+    no Expected Value, etc.) are skipped automatically with the reason written
+    directly into the sheet, rather than failing the whole run.
+
+CHALLENGES ALONG THE WAY
+--------------------------
+- No API meant every field mapping had to be worked out by inspecting the
+  live page — the labels visible on screen didn't match the underlying form
+  field IDs, so the first pass wrote values into the wrong boxes. I built a
+  diagnostic mode that dumps every field on the page with its real ID, which
+  is now also how we fix things fast if STRAFE's page ever changes.
+- The site shows a full-page loading spinner while it calculates; the first
+  version didn't wait for it properly and would occasionally crash mid-run.
+  Fixed by having the tool explicitly wait for that spinner before touching
+  anything else.
+- Edge's debugging connection is picky — it only works if Edge is started
+  with a specific flag *and* no other Edge window is already running, which
+  wasn't obvious up front and needed some troubleshooting to nail down
+  reliably.
+- IT's application allow-list is tied to the exact contents of a file — even
+  a one-line change to an approved script re-triggers a new approval request.
+  I designed around this: the tool reuses the already-approved launcher file
+  as-is rather than replacing it, so approvals aren't invalidated when the
+  rest of the tool is updated.
+- Packaging a Python GUI into a single .exe pulls in Playwright's automation
+  runtime, so the file lands around 50 MB — reasonable, but why we haven't
+  distributed it more widely without confirming antivirus tools are ok with
+  an unsigned executable first (see "what I need from you" below).
+
+WHERE IT STANDS NOW
+---------------------
+- Fully built and working end-to-end.
+- Tested successfully on a second machine (a colleague's, running only the
+  standalone .exe, no source code or Python installed) — Edge connected, the
+  workbook was processed, and every calculated fee came back correct.
+- Fully documented: a plain-language User Guide (also exported to PDF) for
+  anyone running it, and a technical Build & Deploy Guide for whoever
+  maintains it going forward.
+- Packaged into one folder ready to place on the shared drive, split so it's
+  obvious at a glance what's for a user versus what's for a maintainer:
+      App/            <- exe + user guide (this is all a user ever needs)
+      Source/          <- full source code, build scripts
+      docs/            <- both guides
+      Sample workbook/ <- an example file
+
+WHAT I NEED FROM YOU / IT
+----------------------------
+- Sign-off to publish the App/ folder to the shared drive for the wider team.
+- Since the .exe is unsigned, some machines' antivirus may flag or block it
+  on first run — ideally IT allow-lists it (or code-signs it) so nobody hits
+  that. It's worked cleanly on the two machines we've tried it on so far, but
+  I'd rather that be confirmed org-wide than assumed.
+
+Happy to walk through any of this live, or hand off the source/documentation
+directly — everything's written up. Let me know if you'd like a demo before
+it goes out to the wider team.
+
+Thanks,
+[Your name]
